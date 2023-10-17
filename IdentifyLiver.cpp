@@ -1,3 +1,4 @@
+//g++ -std=c++11 -o myprogram IdentifyLiver.cpp $(pkg-config --cflags --libs opencv4)
 #include <iostream>
 #include </opt/homebrew/Cellar/opencv/4.8.1_1/include/opencv4/opencv2/opencv.hpp>
 #include </opt/homebrew/Cellar/opencv/4.8.1_1/include/opencv4/opencv2/imgproc.hpp>
@@ -10,20 +11,71 @@ Mat OverlayTexture(Mat OriginalImage, Mat cancerLiver, vector<vector<Point>> con
 
 int main() {
 
-    string pathHealthy = "./healthy.jpg";
+    string pathHealthy = "./uncut_images_test/image2.png";
     string pathCancer = "./cancer.jpg";
 
     Mat cancerousImg = imread("./cancer.jpg");
+    Mat healthyImg = imread("./uncut_images_test/image2.png");
 
+
+    Scalar lowerThreshold = Scalar(59, 80, 166); // Example lower threshold in RGB
+    Scalar upperThreshold = Scalar(170, 173, 220); 
+
+    // Scalar lowerThreshold = Scalar(59, 90, 166); // Example lower threshold in RGB
+    // Scalar upperThreshold = Scalar(100, 140, 200); 
+
+
+    Mat mask1;
+    inRange(healthyImg, lowerThreshold, upperThreshold, mask1);
+    imwrite("maskAverage.png", mask1);
+
+    vector<vector<Point>> contours = FindLiver("./maskAverage.png");
+
+    vector<vector<Point>> contoursFiltered;
+
+
+    // Output the shape of the contours array
+    cout << "Number of contours: " << contours.size() << endl;
+    int contoursMax = 0;
+    for (size_t i = 0; i < contours.size(); ++i) {
+        //find max 
+        if (contours[i].size() > contoursMax) {
+            contoursMax = contours[i].size();
+
+        }
+
+    }
+
+   
+
+    for (size_t i = 0; i < contours.size(); ++i) {
+
+       float relativeVal = static_cast<float>(contours[i].size()) / contoursMax; // normalize
+       cout << relativeVal << endl;
+        
+
+        if (relativeVal >= 0.1) {
+            contoursFiltered.push_back(contours[i]);
+        }
+        
+
+    }
+
+    //create a filtered array 
+    for (size_t i = 0; i < contoursFiltered.size()-4; ++i) {
+        cout << "Number of points in contour " << i << ": " << contoursFiltered[i].size() << endl;
     
 
+    }
 
-    vector<vector<Point>> contours = FindLiver(pathHealthy);
+
+
     Mat finalImage = imread(pathHealthy); //save image for final overlay 
 
     resize(cancerousImg,cancerousImg,finalImage.size()); 
+
     
-    drawContours(finalImage, contours, -1, 255, 4 ); //finished detecting liver 
+    drawContours(finalImage, contoursFiltered, -1, 255, 4 ); //finished detecting liver 
 
 
 
@@ -41,7 +93,6 @@ int main() {
 
     imwrite("overlayyed.jpg",Image);
     
-
 
 }
 
@@ -83,18 +134,13 @@ Mat OverlayTexture(Mat OriginalImage, Mat cancerLiver, vector<vector<Point>> con
     // Read the cancer liver image and resize it to match the size of the healthy liver image
     resize(cancerLiver,cancerLiver,OriginalImage.size()); 
 
-    
-
     //determine min max y, make the image more focused
-
     int minY = INT_MAX;
     int maxY = INT_MIN;
 
     Mat blended;
     addWeighted(cancerLiver, 0.6, OriginalImage, 1, 0.0, blended);
     return blended;
-
-
 
 
 }
